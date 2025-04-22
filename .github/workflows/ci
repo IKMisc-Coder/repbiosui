@@ -1,0 +1,58 @@
+name: CI
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions: write-all
+jobs:
+  build:
+    name: Build
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/npm-application-build.yml@v3
+    secrets: inherit
+  # with:
+  #   skip-tests: true
+  # ABOUT: The security job triggers a Veracode, CodeQL and BlackDuck scan of your application. This job is set as a required passing status check for pull requests
+  # to main. Required status checks are tied to the name of the job thus changing this job's name will require the branch protection rule for status checks to be updated.
+  #
+  # How to update required status check: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/managing-a-branch-protection-rule
+  security:
+    name: Security
+    needs: [build]
+    uses: charlesschwab/application-security/.github/workflows/static-analysis.yml@v5
+    secrets: inherit
+    with:
+      language: javascript
+      project-version: ${{ needs.build.outputs.version }}
+      language-version: ${{ vars.NODEJS_VERSION }}
+      veracode-sandbox-name: ${{ vars.VERACODE_SANDBOX_NAME }}
+      veracode-app-name: ${{ vars.VERACODE_APP_NAME }}
+      blackduck-apm-id: ${{ vars.BLACKDUCK_APM_ID }}
+      blackduck-repository: ${{ vars.BLACKDUCK_REPOSITORY }}
+      skip-sca-blackduck-scan: true
+      skip-sast-veracode-scan: true
+  container:
+    name: Container
+    needs: [build, security]
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/common-container-workflow.yml@v3
+    secrets: inherit
+    with:
+      artifact-version: ${{ needs.build.outputs.version }}
+  # ABOUT: The release action publishes your deployable artifact into GH Packages or Nexus also, creates a release tagged
+  # with the current version and includes your release notes, and a full changelog.
+  #
+  # Bamboo can be used to deploy this artifact, if you need that functionality set the variable TRIGGER_BAMBOO to true
+  # If a release is not desired for each change to the main branch, comment out this job to skip it during the CI workflow.
+  release:
+    name: Release
+    needs: [build, security, container]
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/npm-application-release.yml@v3
+    secrets: inherit
+    with:
+      artifact-version: ${{ needs.build.outputs.version }}
+      image-ref: ${{ needs.container.outputs.image-ref }}
+      digest: ${{ needs.container.outputs.sha }}

@@ -1,0 +1,7 @@
+applications:
+  - name: repbiosui
+    memory: 256M
+    instances: 1
+    buildpacks:
+      - staticfile_buildpack
+    path: .

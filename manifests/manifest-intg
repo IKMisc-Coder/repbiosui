@@ -1,0 +1,9 @@
+applications:
+  - name: repbiosui
+    memory: 256M
+    instances: 1
+    buildpacks:
+      - staticfile_buildpack
+    path: ./browser
+    env:
+      APIBASE: https://jfk2-sfo-api-gateway-uat.dev.schwab.com/api/marketingSales.RepBios/v1/API

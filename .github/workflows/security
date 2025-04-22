@@ -1,0 +1,43 @@
+# ABOUT: The security workflow triggers a Veracode and CodeQL scan of your application's artifact. The Veracode upload job is available for teams who have a Veracode application.
+#
+# USAGE: The workflow is scheduled to run on the first of the month automatically. This workflow can also be triggered manually.
+# Steps to trigger a workflow manually: https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+name: Security
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+jobs:
+  # Build and zip the artifact once and then use that for the upload and scan jobs
+  build:
+    name: Build
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/npm-application-build.yml@v3
+    secrets: inherit
+    with:
+      skip-tests: true
+  security:
+    name: Security
+    needs: [build]
+    uses: charlesschwab/application-security/.github/workflows/static-analysis.yml@v5
+    secrets: inherit
+    with:
+      language: javascript
+      project-version: ${{ needs.build.outputs.version }}
+      language-version: ${{ vars.NODEJS_VERSION }}
+      veracode-sandbox-name: ${{ vars.VERACODE_SANDBOX_NAME }}
+      veracode-app-name: ${{ vars.VERACODE_APP_NAME }}
+      blackduck-apm-id: ${{ vars.BLACKDUCK_APM_ID }}
+      blackduck-repository: ${{ vars.BLACKDUCK_REPOSITORY }}
+      skip-sca-blackduck-scan: true
+      skip-sast-veracode-scan: true
+  container:
+    if: ${{ vars.BUILD_AND_PUBLISH_CONTAINER_IMAGE == 'true' && vars.CONTAINER_IMAGE_ENABLE_SCHEDULED_BUILDS == 'true' }}
+    name: Container
+    needs: [build, security]
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/common-container-workflow.yml@v3
+    secrets: inherit
+    with:
+      artifact-version: ${{ needs.build.outputs.version }}

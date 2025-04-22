@@ -1,0 +1,23 @@
+# ABOUT: The Open Source Governance workflow handles the submission of reviewed dependencies in a merge to main
+#
+# USAGE: The workflow will run whenever an open issue is edited that contains the "tag"
+name: Open Source Governance - Dependency Review
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  issues:
+    types: [edited]
+jobs:
+  # DO NOT modify the expected comment strings or the run-mode unless you also modify
+  # https://github.com/charlesschwab/application-security/blob/main/src/opensourcegov/osg-processor.js
+  mark-reviews:
+    name: Submit Reviewed Dependencies
+    # open issue, contains the required text in the comment
+    if: ${{ vars.BLACKDUCK_ENABLE_OSG_DEPENDENCY_CHECK != 'false' && github.event.issue.state == 'open' && contains(github.event.issue.body, '<!-- OSG DEPENDENCY-REPORT') }}
+    uses: charlesschwab/application-security/.github/workflows/opensource-gov.yml@v5
+    secrets: inherit
+    with:
+      run-mode: 'submit-reviews'
+      issue-number: '${{ github.event.issue.number }}'
+      review-user: '${{ github.event.sender.login }}'

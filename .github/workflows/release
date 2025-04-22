@@ -1,0 +1,33 @@
+# ABOUT: The release action creates a release tagged with the current version and includes your application's assets, release notes, and a full changelog.
+#
+# USAGE: Steps to trigger a workflow manually: https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+# The release job contained in the ci.yml can be deleted if manually triggering the release workflow
+name: Release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    name: Build
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/npm-application-build.yml@v3
+    secrets: inherit
+    with:
+      skip-tests: true
+  container:
+    name: Container
+    needs: [build]
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/common-container-workflow.yml@v3
+    secrets: inherit
+    with:
+      artifact-version: ${{ needs.build.outputs.version }}
+  publish-artifact:
+    name: Publish Artifact
+    needs: [build]
+    uses: charlesschwab/enterprise-workflow-library/.github/workflows/npm-application-release.yml@v3
+    secrets: inherit
+    with:
+      artifact-version: ${{ needs.build.outputs.version }}
+      image-ref: ${{ needs.container.outputs.image-ref }}
+      digest: ${{ needs.container.outputs.sha }}

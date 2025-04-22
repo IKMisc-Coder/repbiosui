@@ -1,0 +1,33 @@
+# ABOUT: The stale workflow notifies of PRs that have had no activity after 2 weeks.
+#
+# USAGE: The workflow is configured to run daily at 1:30am and will comment on and add a "Stale" label to PRs after 2 weeks of inactivity.
+# Additional configurations for the stale action: https://github.com/actions/stale
+name: 'Notify of stale PRs'
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+on:
+  schedule:
+    - cron: '30 2 * * *'
+permissions:
+  pull-requests: write
+jobs:
+  stale:
+    permissions:
+      pull-requests: write
+      issues: read
+    runs-on:
+      group: cloud-base-linux
+    steps:
+      - uses: actions/stale@v9
+        with:
+          stale-pr-message:
+            'This PR has been marked stale because it has been open for more than 2 weeks with no activity. In order to keep development in sync, PRs should be open for a short time to collect feedback and address review
+            comments, then closed in favor of another direction or a merge.'
+          days-before-pr-stale: 15
+          # Disable detection of stale issues
+          days-before-issue-stale: -1
+          # Disable auto-closure of stale PRs
+          days-before-close: -1
+          # Resets stale timer when any update occurs or if a comment is added
+          ignore-updates: false
