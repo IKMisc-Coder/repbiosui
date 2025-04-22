@@ -7,3 +7,7 @@ applications:
     path: ./browser
     env:
       APIBASE: https://jfk2-sfo-api-gateway-uat.dev.schwab.com/api/marketingSales.RepBios/v1/API
+      LDCLIENTSIDEID: 6540d0aa06dce7128bcb537c
+      SCHWABCLIENTENV: SIT01
+      IS_PROD: false
+      ENVIRONMENT: INTG
